@@ -1,31 +1,34 @@
-﻿# Overhaul verification — 18 October 2026
+# Release verification — 18 October 2026
 
-This report supersedes the original build's verification. The old source and tests are preserved in `docs/pre-overhaul.zip`.
+This report covers the three-stage action redesign. It distinguishes automated evidence from unverified human experience.
 
-## Baseline and fixes
+## Encounter and controls
 
-The pre-overhaul browser controller won in 18.6 seconds with three shots, no mistakes and little repositioning. Single distractions and nominal recovery states granted marks. The overhaul replaces those broad windows with actual threat separation, changed lanes, bound tentacles, or a missed close lunge.
+- `npm test`: **53 passing, zero failing**. Coverage includes dash recovery/no immunity, sprint slide, clear-landing desk vaults and tall-wall rejection, accurate interception commitments, contact/follow-through timing, stationary melee abuse, sweep height/range/LOS, feints, repositioning, collision, reload resources, navigation/search, adaptation, win/loss/reset, audio and saved records.
+- Complete simulation controllers use real movement and normal attack/command methods without setting hits, AI states or timers. Normal and Hard each win across three seeds; Precision and Teamwork objectives pass. A teammate-free angle route also wins. A prepared Kaede/net setup produces a real net mark.
+- Deliberately stationary shooting with repeated single-classmate commands and stationary knife spam lose. Repeated unsupported counters require an additional threat; adaptation expires. Representative classroom, corner, veranda and yard pressure/search checks pass. This is not exhaustive map coverage.
+- Input-driven Chrome victory: **12 marks, three stages, zero mistakes, 49.16 seconds**, six evasions, with challenge, angle and counter routes. The driver reads state, aims precisely and emits keyboard/mouse events; it does not assign outcomes. This is not a human pacing measurement.
+- Natural stationary-fire browser loss: **five mistakes at 22.39 seconds**, followed by a successful same-seed reset.
+- Browser control checks cover pointer lock, movement, crouch/jump/quickstep, tools, aiming/reload, net placement/retrieval, both commands, pause freezing, settings, result records and retry. Result-screen fixture coverage uses explicit score/timeout setup and is separate from the input-only playthrough.
 
-Independent code review found and resolved four additional defects: knife spam cancelling committed tags, stale player memory preventing search, missing interception UI text, and missing floor/yard/ceiling impacts. Regressions cover each.
+## Presentation, sound and lifecycle
 
-## Automated evidence
+- Reviewed normal gameplay, classroom/veranda/garden, sweep and front/side/back character screenshots. Corrected missing rounded desk surfaces, window glass casting opaque shadows and Koro-sensei shadow artifacts.
+- HUD/settings checked at **1280×720, 1366×768 and 1440×900** with both classmates active; core groups stay on screen and no undefined/NaN labels appear.
+- **Twelve consecutive retries** reset marks, mistakes, traps, stage and ally cooldowns. After warming the persistent net meshes, renderer memory remains **259 geometries and 10 textures** before and after. Temporary visual effects are capped at 32 and disposed.
+- During the winning headless Chrome run, the 95th-percentile animation-frame interval was **7ms**; peak observed render statistics were **442 draw calls, 147,498 triangles and nine transient effects**. These workstation/headless measurements are not a low-end GPU benchmark.
+- Audio buffer tests cover finite samples, variation, headroom, positional routing and distinct movement/combat cues. Rendering the actual stereo Web Audio graph with overlapping cues produced peak amplitude **0.346**, below digital clipping. The review WAV is generated in ignored `test-results/`. Human headphone listening quality remains unverified.
+- Independent review found misleading knife-flash instructions and Teamwork progress above 12 marks. Guidance now uses the reachable, cooldown-ready white crosshair; Teamwork progress is capped while missing assistance objectives remain explicit.
 
-- `npm test`: **37 passing, 0 failing**. Includes real movement/command runs for crossfire, prepared net, and knife counter; complete standard/precision/teamwork runs across three seeds; stationary shooting and repeated single-ability failure; knife-spam failure; hidden-net perception; repeated-lane adaptation; obstruction, inventory, reset, timeout, and audio signatures.
-- `node tests/playthrough.mjs`: real-time Chrome **Teamwork victory, three marks, zero mistakes, 14.8 simulated seconds**. Route sequence: prepared net, knife flank, opposite-side knife flank. Driver reads state to steer and emits keyboard/mouse events; it never assigns hits, AI states, inventory, positions or timers. This precise automated run is not a human difficulty measurement.
-- `node tests/loss-playthrough.mjs`: natural **three-tag loss in17.7 seconds**, then same-seed retry with reset hits/mistakes/status.
-- `npm run test:browser`: mouse capture, crouch/jump/movement, selection, net placement/retrieval, commands, pause freezing, persisted settings, aiming/reload, result screens and retry transitions pass. Result-screen coverage uses explicit score/timeout fixtures and is separate from the natural playthrough tests.
-- Lost-contact tests start hidden players in yard `(20,0)`, veranda `(9,0)`, and a crouched classroom position `(-7,1)`. AI searches and tags within44 seconds without first giving it those coordinates. Other pressure tests cover representative classroom/corner/veranda/yard positions with known contact. These are samples, not an exhaustive proof of every map point.
-- Procedural audio checks verify finite samples, audible energy, variation and individual headroom. `node tests/audio-render.mjs` renders the actual stereo Web Audio graph including a dense overlapping cue test: measured peak **0.563**, below digital clipping. Review sequence: `test-results/audio-review.wav`. No human headphone listening evaluation is claimed.
-- Winning browser run measured a 95th-percentile animation frame interval of **7ms** on this workstation's headless Chrome configuration. This is not a low-end GPU benchmark. Static meshes are merged; transient geometry is disposed.
+## Packaging
 
-## Presentation and packaging
-
-- Front/side/back cast views inspected; corrected reversed hair surfaces and uniform/collar silhouettes. Simplified forms and facial animation remain visible limitations.
-- HUD/settings checked at1280×720,1366×768,1440×900 with both classmate commands active. Screenshots: `test-results/hud-*` and `settings-*`. No off-viewport core HUD groups or undefined/NaN labels.
-- Local fonts/portraits, original generated audio and bundled Three.js need no runtime internet. Production check blocks external requests, tests settings and both lesson variants, and verifies development hooks are absent. Workstation antivirus injects an external script into localhost responses; the test blocks and separately identifies this OS injection.
-- `npm run build` produces the included `dist/`. Vite reports a590.8kB JavaScript bundle (159.6kB gzip); its advisory chunk-size warning reflects the bundled 3D runtime, not a failed build.
-- Impeccable's single final mechanical detector reported two accent-border warnings. The thin field-note rule and rectangular sheet top rule are intentional parts of the notebook treatment; sheets have no rounded corners.
+- Vite production build succeeds. Three.js is split into its own roughly 509.5kB chunk; Vite's size advisory remains. The application chunk is roughly 104.8kB. Runtime fonts, portraits and sound are local.
+- Static build audit checks relative entries, local fonts/portraits and absence of localhost or development hooks in production JavaScript.
+- Production offline check blocks external requests and tests settings and both variations. The workstation antivirus injects its own external request into localhost responses; the test blocks and separately identifies it. The application makes no external runtime requests.
+- Source publication excludes dependencies, build output, credentials, environment files, private briefs, internal notes and temporary test artifacts. Third-party notices and verified user commit identity are retained.
 
 ## Limits
 
-No anime-production model, recorded voice/audio, exhaustive navigation guarantee or broad human balance claim is made. Models are procedural stylized interpretations; movement uses conservative floor collision; some cloth/tentacle gestures can overlap scenery. The fast state-aware controller demonstrates feasibility and does not establish novice completion time. Details and controls are in README.md.
+The requested five-to-eight-minute human session, broad difficulty tuning, subjective enjoyment, headphone listening quality and low-end GPU performance remain unverified. Expert simulation controllers finish in approximately 56–75 seconds. No forced waiting or padded health was added to simulate duration.
+
+Models and animations are procedural stylizations, not production anime assets. Some cloth/tentacle poses can intersect scenery; collision uses simplified geometry. Dialogue is text and sound is locally synthesized. This is a desktop keyboard/mouse browser game, not a commercial AAA release.
