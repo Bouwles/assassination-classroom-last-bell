@@ -27,8 +27,8 @@ test('trap placement and preview agree; retrieve returns inventory',()=>{
  s.player.z=-1;s.retrieve();assert.equal(s.traps.length,0);assert.equal(s.trapStock,3);
  s.player.x=7;s.player.z=0;s.player.yaw=-Math.PI/2;assert.equal(s.trapPreview().valid,false);assert.equal(s.placeTrap(),false);
 });
-test('a bound tentacle needs a changed flanking lane to score',()=>{
- const s=new Lesson();Object.assign(s.koro,{x:0,z:-6,yaw:Math.PI,headYaw:Math.PI,state:'observe',timer:8,lane:{x:0,z:-3}});s.traps.push({id:1,x:0,z:-6,armed:0,used:false,seen:false});s.updateTraps(.01);assert.equal(s.koro.state,'trapped');s.player.x=3;s.player.z=-6;aim(s);s.attack();assert.equal(s.hits,1);assert.equal(s.assists.trap,1);
+test('a bound tentacle creates contact and needs coordinated follow-through',()=>{
+ const s=new Lesson();Object.assign(s.koro,{x:0,z:-6,yaw:Math.PI,headYaw:Math.PI,state:'observe',timer:8,lane:{x:0,z:-3}});s.traps.push({id:1,x:0,z:-6,armed:0,used:false,seen:false});s.updateTraps(.01);assert.equal(s.koro.state,'trapped');s.player.x=3;s.player.z=-6;aim(s);s.attack();assert.equal(s.hits,0);assert.equal(s.stats.contacts,1);step(s,.3);s.player.x=3.3;s.player.z=-5.4;aim(s);s.attack();assert.equal(s.hits,1);assert.equal(s.assists.trap,1);
 });
 test('classmates move, prepare, distract and enforce cooldown',()=>{
  const s=new Lesson();const a=s.allies.karma;const before={x:a.x,z:a.z};assert.equal(s.command(),true);assert.equal(s.command(),false);
@@ -36,16 +36,16 @@ test('classmates move, prepare, distract and enforce cooldown',()=>{
 });
 test('a missed committed tag has a real counter opening',()=>{
  const s=new Lesson();s.koro.state='windup';s.koro.timer=.01;s.koro.target={x:0,z:-3};s.koro.x=0;s.koro.z=-7;s.player.x=3;s.player.z=-3;
- step(s,1);assert.equal(s.koro.state,'counter');s.player.x=s.koro.x+1.6;s.player.z=s.koro.z;s.tool=2;aim(s);s.player.pitch=0;s.attack();assert.equal(s.hits,1);
+ step(s,1);assert.equal(s.koro.state,'counter');s.player.x=s.koro.x+1.6;s.player.z=s.koro.z;s.tool=2;aim(s);s.player.pitch=0;s.attack();assert.equal(s.hits,0);assert.equal(s.stats.contacts,1);step(s,.36);s.player.z-=.4;aim(s);s.attack();assert.equal(s.hits,1);
 });
-test('three hits win, three separate mistakes lose, retry fully resets',()=>{
- const s=new Lesson(42);s.score('counter');step(s,2);s.score('net');step(s,2);s.score('crossfire');assert.equal(s.status,'won');
- const fresh=new Lesson(42);assert.equal(fresh.hits,0);assert.equal(fresh.traps.length,0);assert.equal(fresh.allies.karma.cooldown,0);assert.equal(fresh.seed,s.seed);
- fresh.tag();step(fresh,3.1);fresh.tag();step(fresh,3.1);fresh.tag();assert.equal(fresh.status,'lost');
+test('all stage objectives win, separate mistakes lose, retry fully resets',()=>{
+ const s=new Lesson(42);for(let i=0;i<s.totalGoal;i++){s.koro.state='observe';s.score('angle');}assert.equal(s.status,'won');assert.equal(s.stage,3);
+ const fresh=new Lesson(42);assert.equal(fresh.hits,0);assert.equal(fresh.traps.length,0);assert.equal(fresh.allies.karma.cooldown,0);assert.equal(fresh.seed,s.seed);assert.equal(fresh.stage,1);assert.equal(fresh.player.dashCooldown,0);
+ for(let i=0;i<fresh.maxMistakes;i++){fresh.immunity=0;fresh.tag();}assert.equal(fresh.status,'lost');
 });
 test('lesson timeout ends and precision reload respects finite reserve',()=>{
  const s=new Lesson(1,'precision');s.ammo=0;s.reserve=2;s.reload();step(s,1.3);assert.equal(s.ammo,2);assert.equal(s.reserve,0);s.remaining=.01;step(s,.1);assert.equal(s.status,'lost');
 });
-test('teamwork needs both assistance types and still allows finishing them',()=>{
- const s=new Lesson(1,'teamwork');s.score('counter');step(s,2);s.score('counter');step(s,2);s.score('counter');assert.equal(s.status,'playing');step(s,2);s.score('net');step(s,2);s.score('crossfire');assert.equal(s.status,'won');
+test('teamwork requires both assistance types before the final result',()=>{
+ const s=new Lesson(1,'teamwork');for(let i=0;i<s.totalGoal+3;i++){s.koro.state='observe';s.score('angle');}assert.equal(s.status,'playing');assert.equal(s.hits,s.totalGoal);assert.equal(s.stageHits,s.stageGoal);assert.match(s.lastHint,/net-assisted/);s.koro.state='observe';s.score('net');assert.equal(s.status,'playing');assert.equal(s.hits,s.totalGoal);assert.match(s.lastHint,/classmate-assisted/);s.koro.state='observe';s.score('crossfire');assert.equal(s.status,'won');assert.equal(s.hits,s.totalGoal);assert.equal(s.stageHits,s.stageGoal);
 });

@@ -1,23 +1,30 @@
 import {dist} from './world.js';
 export const heading=(a,b)=>Math.atan2(b.x-a.x,b.z-a.z);
 export const angleGap=(a,b)=>Math.abs(Math.atan2(Math.sin(a-b),Math.cos(a-b)));
+export function activeThreats(s){return Object.entries(s.allies).filter(([,a])=>a.state==='active'&&a.engaged&&s.time-a.started>.16&&s.world.clear(a,s.koro,1.3)&&dist(a,s.koro)<10);}
 export function assessOpening(s,tool=s.tool){
- const k=s.koro,p=s.player,range=dist(k,p),attackAngle=heading(k,p),deny=reason=>({allowed:false,reason,route:null});
+ const k=s.koro,p=s.player,c=s.config,attackAngle=heading(k,p),range=dist(k,p),deny=reason=>({allowed:false,decisive:false,reason,route:null});
  if(tool===3)return deny('Prepare the route, then switch to a weapon.');
- if(['recover','windup','tag','dodge'].includes(k.state))return deny(k.state==='recover'?'He is resetting the training mark.':'He has not committed his guard yet.');
- const threats=Object.entries(s.allies).filter(([,a])=>a.state==='active'&&a.engaged&&s.world.clear(a,k,1.3)&&dist(a,k)<9),fresh=threats.filter(([,a])=>s.time-a.started>.16);
- const offset=angleGap(attackAngle,k.guardYaw??k.yaw),flank=offset>1.05,lane=k.lane,shifted=!lane||dist(lane,p)>1.7&&angleGap(heading(k,lane),attackAngle)>.34;
- let route=null,reason='He still has a free tentacle watching your lane.';
- if(k.boundUntil>s.time){if(flank&&(fresh.length>0||shifted))route='net';else reason='One tentacle is caught. Flank his guard or add a classmate.';}
- else if(tool===2&&k.counter&&k.counter.until>s.time){const c=k.counter;if(c.missed&&dist(p,c.aim)>1.25&&angleGap(attackAngle,c.heading)>1.0)route='counter';else reason='Evade the committed tag, then close from his side.';}
- else if(fresh.length>=2){const separation=angleGap(heading(k,fresh[0][1]),heading(k,fresh[1][1])),offThreat=fresh.every(([,a])=>angleGap(attackAngle,heading(k,a))>.65);if(separation>1.1&&offThreat&&shifted)route='crossfire';else reason=shifted?'Your threats share an angle. Create a wider crossfire.':'He kept a tentacle on your old position. Change lanes.';}
- else if(tool===2&&fresh.length&&offset>1.85&&p.crouch&&s.time-s.lastShotTime>2&&shifted)route='ambush';
- else if(fresh.length)reason=tool===2?'Crouch and approach behind his attention.':'One distraction is not enough. Add the other classmate or a net.';
- else if(k.state==='counter')reason='His back is exposed only at close range. Use the knife from his flank.';
- else if(k.state==='inspect')reason='Checking a net does not occupy his guard.';
- else if(k.state==='teach')reason='Even while teaching, he is watching obvious shots.';
- if(!route)return deny(reason);if(tool===2&&range>2.55)return deny('Close the distance before committing the knife.');
- if(route==='counter'){const side=Math.sign(Math.sin(attackAngle-k.counter.heading));const previous=[...s.history].reverse().find(h=>h.route==='counter'&&s.time-h.time<50);if(previous&&previous.side===side)return deny('He remembers your sidestep. Counter from the other side or add a threat.');}
- if(s.history.find(h=>s.time-h.time<50&&h.route===route&&dist(h,p)<3&&angleGap(h.angle,attackAngle)<.65))return deny('He remembers this setup. Change your lane or combine a different threat.');
- return {allowed:true,route,reason:({net:'Prepared net + flank',counter:'Evaded tag + knife flank',crossfire:'Two threats + a new angle',ambush:'Quiet approach behind a challenge'})[route]};
+ if(['recover','windup','tag','dodge','reposition','feint','sweepWindup','sweep'].includes(k.state))return deny(k.state==='recover'?'Training mark verified. Find your next approach.':'Read the commitment, evade, then punish the recovery.');
+ if(tool===2&&range>2.55)return deny('Close the distance before committing the knife.');
+ const fresh=activeThreats(s),follow=k.follow;
+ if(follow&&follow.until>s.time){
+  const elapsed=s.time-follow.time,angle=angleGap(attackAngle,follow.angle),support=fresh.some(([,a])=>angleGap(heading(k,a),attackAngle)>.8)||k.boundUntil>s.time;
+  if(elapsed<c.followMin)return deny('Let the first strike land. Follow through when the crosshair turns white.');
+  if(tool===2&&elapsed<=c.knifeFollowWindow&&(angle>.12||support)||tool===1&&(support&&angle>.13||angle>.34))return {allowed:true,decisive:true,route:follow.route,reason:tool===2?'Timed knife follow-through':'Coordinated follow-through'};
+  return deny('Contact! Move across his guard and knife when the crosshair turns white, change angle again, or coordinate a teammate.');
+ }
+ const offset=angleGap(attackAngle,k.guardYaw??k.yaw),lane=k.lane,shifted=!lane||dist(lane,p)>1.3&&angleGap(heading(k,lane),attackAngle)>.3;
+ const commitments=k.commitments.filter(t=>t.until>s.time),newAngle=commitments.some(t=>angleGap(attackAngle,t.angle)>c.angleThreshold+(s.stage-1)*.05+(s.history.some(h=>h.route==='angle'&&s.time-h.time<c.adaptation&&dist(h,p)<2.6)?.18:0)&&dist(t,p)>1.25);
+ let route=null,reason='Accurate shots occupy a tentacle. Move to a new angle while it intercepts.';
+ if(k.boundUntil>s.time){if(offset>.8&&(fresh.length||shifted))route='net';else reason='A tentacle is caught. Flank his guard or coordinate a teammate.';}
+ else if(tool===2&&k.counter?.missed&&k.counter.until>s.time&&dist(p,k.counter.aim)>1.25&&angleGap(attackAngle,k.counter.heading)>.9)route='counter';
+ else if(fresh.length>=2&&fresh.every(([,a])=>angleGap(attackAngle,heading(k,a))>.6)&&shifted)route='crossfire';
+ else if(fresh.length&&shifted&&offset>1.65&&tool===2&&p.crouch&&s.time-s.lastShotTime>1)route='ambush';
+ else if(fresh.length&&shifted&&offset>.9&&newAngle)route='challenge';
+ else if(newAngle)route='angle';
+ if(!route)return deny(reason);
+ const recent=s.history.filter(h=>h.route===route&&s.time-h.time<c.adaptation),repeated=route==='counter'?recent.length>=2:recent.some(h=>dist(h,p)<2.6&&angleGap(h.angle,attackAngle)<.55);
+ if(repeated&&!fresh.length&&!newAngle&&k.boundUntil<=s.time)return deny('He remembers this setup. Add accurate pressure or a teammate, then change your approach.');
+ return {allowed:true,decisive:false,route,reason:({net:'Net occupied · make contact',counter:'Evaded commitment · knife contact',crossfire:'Two threats · new angle',ambush:'Close approach behind a challenge',angle:'Interception occupied · new angle',challenge:'Challenge + accurate pressure'})[route]};
 }

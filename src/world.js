@@ -19,6 +19,7 @@ export class World {
   for(const z of [-9.6,-1,7.6])box(10.9,z,.18,.18,3.8,0,'post');
   box(-4.8,-8,2.4,.95,.9,0,'teacher');
   box(-7.55,6.7,.6,1.8,1.8,0,'cabinet');
+  box(16,-6.5,2.8,.7,1.25,0,'planter');box(18,3.4,.7,2.8,1.25,0,'planter');
   // The whole local encounter is bounded by a low timber fence.
   box(21.5,-1,.25,18,1.15,0,'fence');box(14.7,-10,13.5,.25,1.15,0,'fence');box(14.7,8,13.5,.25,1.15,0,'fence');
   this.navCache=new Map();
@@ -32,7 +33,14 @@ export class World {
   for(let i=0;i<n;i++){if(this.free(p.x+dx/n,p.z,r))p.x+=dx/n;if(this.free(p.x,p.z+dz/n,r))p.z+=dz/n;}
  }
  raycast(o,d,max=100){let near=max;for(const b of this.solids) near=Math.min(near,rayBox(o,d,b,near));return near;}
- raycastHit(o,d,max=100){let distance=max,kind='air';for(const b of this.solids){const near=rayBox(o,d,b,distance);if(near<distance){distance=near;kind=['desk','chair','teacher','fence','cabinet','post'].includes(b.kind)?'wood':'plaster';}}if(Math.abs(d.y)>1e-8){for(const y of [0,4.25]){const t=(y-o.y)/d.y,x=o.x+d.x*t,z=o.z+d.z*t;if(t>0&&t<distance&&x>=-8&&x<=21.3&&z>=-10&&z<=8&&(y===0||x<11)){distance=t;kind=y===0&&x>11?'ground':'wood';}}}return {distance,kind};}
+ vaultTarget(p,direction,reach=1.05){
+  const desk=this.solids.filter(b=>b.kind==='desk').map(b=>({b,t:rayBox({x:p.x,y:.5,z:p.z},{x:direction.x,y:0,z:direction.z},b,reach)})).filter(v=>v.t<reach).sort((a,b)=>a.t-b.t)[0];
+  if(!desk)return null;
+  const b=desk.b;let exit=desk.t;
+  while(exit<3.6){exit+=.08;const x=p.x+direction.x*exit,z=p.z+direction.z*exit;if(x<b.x0-.31||x>b.x1+.31||z<b.z0-.31||z>b.z1+.31){const target={x,z};if(this.free(x,z,.28)&&this.clear(p,target,1.15))return target;}}
+  return null;
+ }
+ raycastHit(o,d,max=100){let distance=max,kind='air';for(const b of this.solids){const near=rayBox(o,d,b,distance);if(near<distance){distance=near;kind=['desk','chair','teacher','fence','cabinet','post','planter'].includes(b.kind)?'wood':'plaster';}}if(Math.abs(d.y)>1e-8){for(const y of [0,4.25]){const t=(y-o.y)/d.y,x=o.x+d.x*t,z=o.z+d.z*t;if(t>0&&t<distance&&x>=-8&&x<=21.3&&z>=-10&&z<=8&&(y===0||x<11)){distance=t;kind=y===0&&x>11?'ground':'wood';}}}return {distance,kind};}
  clear(a,b,height=1.5){const length=dist(a,b);if(length<.01)return true;return this.raycast({x:a.x,y:height,z:a.z},{x:(b.x-a.x)/length,y:0,z:(b.z-a.z)/length},length)>=length-.02;}
  segmentFree(a,b,r=.42,avoid=[]){const d=dist(a,b);for(let i=0;i<=Math.ceil(d/.18);i++){const t=d<.01?0:Math.min(1,i*.18/d),p={x:a.x+(b.x-a.x)*t,z:a.z+(b.z-a.z)*t};if(!this.free(p.x,p.z,r)||avoid.some(n=>dist(n,p)<1.15))return false;}return this.free(b.x,b.z,r)&&!avoid.some(n=>dist(n,b)<1.15);}
  nearest(p,r=.44,avoid=[]){const ok=q=>this.free(q.x,q.z,r)&&!avoid.some(n=>dist(n,q)<1.15);if(ok(p))return {...p};for(let rad=.4;rad<8;rad+=.4)for(let i=0;i<20;i++){const a=i*Math.PI/10,q={x:p.x+Math.cos(a)*rad,z:p.z+Math.sin(a)*rad};if(ok(q))return q;}return {x:0,z:-7};}
