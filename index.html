@@ -1,2 +1,30 @@
 <!doctype html>
-<html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#182f33"><meta name="description" content="Last Bell: a first-person Class 3-E training encounter. Move, coordinate, and catch one extraordinary teacher."><title>Last Bell — Class 3-E</title><style>html,body{margin:0;background:#182f33;color:#f5f4df;font-family:system-ui,sans-serif}.boot{position:fixed;inset:0;display:grid;place-content:center;text-align:center;gap:14px}.boot b{font-size:36px;letter-spacing:-1px}.boot p{font-size:13px;color:#d5ddc7;margin:0}.boot i{display:block;width:28px;height:28px;border:2px solid #f5f4df44;border-top-color:#f6d447;border-radius:50%;margin:0 auto;animation:load 1s linear infinite}@keyframes load{to{transform:rotate(360deg)}}@media(prefers-reduced-motion:reduce){.boot i{animation:none}}</style></head><body><canvas id="game" aria-label="First-person Class 3-E training game"></canvas><div id="app"><div class="boot" role="status"><i></i><b>Last Bell.</b><p>Preparing the classroom…</p></div></div><noscript>This game requires JavaScript and WebGL. Enable JavaScript, then reload.</noscript><script type="module">import('/src/main.js').catch(error=>{console.error(error);const app=document.getElementById('app');app.replaceChildren();const box=document.createElement('div');box.className='boot';const title=document.createElement('b');title.textContent='The classroom could not load.';const text=document.createElement('p');text.textContent='Check your connection and reload to try again.';const retry=document.createElement('button');retry.textContent='Reload game';retry.onclick=()=>location.reload();box.append(title,text,retry);app.append(box);});</script></body></html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#24463b">
+<meta name="description" content="Mach 20: an Assassination Classroom fan game. Track Koro-sensei through his afterimages and land the strike before the bell.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 32 32%22%3E%3Ccircle cx=%2216%22 cy=%2216%22 r=%2214%22 fill=%22%23ffd21f%22 stroke=%22%23000%22 stroke-width=%222%22/%3E%3Cpath d=%22M8 17q8 9 16 0%22 fill=%22%23fff%22 stroke=%22%23000%22 stroke-width=%221.5%22/%3E%3Ccircle cx=%2212%22 cy=%2212%22 r=%221.4%22/%3E%3Ccircle cx=%2220%22 cy=%2212%22 r=%221.4%22/%3E%3C/svg%3E">
+<title>Mach 20 · Class 3-E</title>
+<style>
+html,body{margin:0;background:#24463b;color:#f3f1e7;font-family:system-ui,sans-serif}
+.boot{position:fixed;inset:0;display:grid;place-content:center;text-align:center;gap:10px}
+.boot b{font-size:40px;color:#ffd21f;letter-spacing:-1px}
+.boot p{margin:0;font-size:14px}
+.boot button{justify-self:center;margin-top:8px;padding:8px 18px;border:3px solid #000;background:#ffd21f;font-weight:700}
+</style>
+</head>
+<body>
+<canvas id="game" aria-label="Class 3-E classroom where Koro-sensei dodges at Mach 20"></canvas>
+<div id="app"><div class="boot" role="status"><b>Mach 20</b><p>Wiping the blackboard…</p></div></div>
+<noscript>This game needs JavaScript. Turn it on, then reload.</noscript>
+<script type="module">
+import('/src/main.js').catch(error => {
+  console.error(error);
+  const app = document.getElementById('app');
+  app.innerHTML = '<div class="boot"><b>Class is cancelled</b><p>The game could not load. Check your connection, then reload.</p><button onclick="location.reload()">Reload</button></div>';
+});
+</script>
+</body>
+</html>

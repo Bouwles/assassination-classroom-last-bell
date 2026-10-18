@@ -1,63 +1,92 @@
-import {synthesize,recipes} from './audio-design.js';
+// Everything is synthesized with Web Audio; no recordings ship with the game.
+const NOTE = n => 440 * 2 ** ((n - 69) / 12);
+const SONGS = {
+  // [bpm, root midi, chord roots in semitones per bar]
+  morning: [118, 60, [0, 9, 5, 7]],
+  noon: [128, 62, [0, 5, 9, 7]],
+  sunset: [104, 57, [0, 8, 3, 10]],
+  night: [96, 57, [0, 5, 8, 7]],
+  graduation: [88, 60, [5, 7, 4, 9]],
+};
+
 export class Sound {
- constructor(){this.ctx=null;this.sound=.65;this.music=.16;this.volume=.8;this.clock=0;this.beat=0;this.ambient=0;this.variation=0;this.duckUntil=0;this.bank={};}
- start(){
-  if(!this.ctx){const c=this.ctx=new AudioContext();this.master=c.createDynamicsCompressor();this.master.threshold.value=-12;this.master.knee.value=12;this.master.ratio.value=5;this.master.attack.value=.003;this.master.release.value=.18;this.output=c.createGain();this.output.gain.value=this.volume*.72;this.master.connect(this.output);this.output.connect(c.destination);
-   this.fx=c.createGain();this.fx.connect(this.master);this.musicGain=c.createGain();this.musicGain.connect(this.master);
-   this.reverb=c.createConvolver();const ir=c.createBuffer(2,c.sampleRate*.34,c.sampleRate);for(let ch=0;ch<2;ch++){const a=ir.getChannelData(ch);for(let i=0;i<a.length;i++)a[i]=(Math.random()*2-1)*Math.exp(-i/a.length*9)*.13;}this.reverb.buffer=ir;const wet=c.createGain();wet.gain.value=.12;this.reverb.connect(wet);wet.connect(this.fx);
-   for(const name of Object.keys(recipes))this.bank[name]=[1,21,41,61].map(seed=>{const samples=synthesize(name,seed);const b=c.createBuffer(1,samples.length,24000);b.copyToChannel(samples,0);return b;});
-  }this.ctx.resume().catch(()=>{});this.levels(this.sound,this.music,this.volume);
- }
- levels(fx,music,master=this.volume){this.sound=Math.max(0,Math.min(1,fx));this.music=Math.max(0,Math.min(1,music));this.volume=Math.max(0,Math.min(1,master));if(this.ctx){this.fx.gain.setTargetAtTime(this.sound,this.ctx.currentTime,.03);this.musicGain.gain.setTargetAtTime(this.music,this.ctx.currentTime,.1);this.output.gain.setTargetAtTime(this.volume*.72,this.ctx.currentTime,.03);}}
- play(name,{gain=.5,pan=0,distance=0,delay=0,rate=1,outdoor=false}={}){
-  if(!this.ctx||!this.bank[name])return;const c=this.ctx,src=c.createBufferSource(),g=c.createGain(),p=c.createStereoPanner(),filter=c.createBiquadFilter();src.buffer=this.bank[name][this.variation++%4];src.playbackRate.value=rate;filter.type='lowpass';filter.frequency.value=Math.max(1600,15000-distance*650);g.gain.value=gain/(1+distance*.12);p.pan.value=Math.max(-1,Math.min(1,pan));src.connect(filter);filter.connect(g);g.connect(p);p.connect(this.fx);if(!outdoor)p.connect(this.reverb);src.start(c.currentTime+delay);src.onended=()=>{src.disconnect();filter.disconnect();g.disconnect();p.disconnect();};
- }
- position(e,s){if(!Number.isFinite(e.x)||!Number.isFinite(e.z))return {};const dx=e.x-s.player.x,dz=e.z-s.player.z,d=Math.hypot(dx,dz);return {pan:(dx*Math.cos(s.player.yaw)-dz*Math.sin(s.player.yaw))/Math.max(2,d),distance:d,outdoor:e.x>11};}
- event(e,s){const pos=this.position(e,s),play=(n,g=.5,delay=0)=>this.play(n,{...pos,gain:g,delay});
-  switch(e.type){
-   case 'footstep':play(e.surface==='ground'?'ground':e.surface==='veranda'?'veranda':'wood',e.quiet?.12:e.ally?.3:e.sprint?.46:.3);if(e.sprint)play('cloth',.14,.03);break;
-   case 'land':play(e.surface==='ground'?'ground':e.surface==='veranda'?'veranda':'wood',.6);play('cloth',.25);break;
-   case 'dashPlayer':play('quickstep',.55);play('cloth',.15,.06);break;
-   case 'slide':play('slide',.48);play('cloth',.22,.08);break;
-   case 'vault':play('vault',.52);play('cloth',.2,.08);break;
-   case 'sweepTell':play('sweepTell',.85);this.duckUntil=(this.ctx?.currentTime||0)+1.6;break;
-   case 'sweep':play('sweep',.7);play('tentacle',.4,.12);break;
-   case 'feint':play('feint',.65);break;
-   case 'reposition':play('dash',.55);if(e.target)this.play('arrival',{...this.position(e.target,s),gain:.4,delay:.28});break;
-   case 'stage':play('stage',.65);[52,59,64,71].forEach((n,i)=>this.pluck(n,.22,i*.12,false));this.duckUntil=(this.ctx?.currentTime||0)+2;break;
-   case 'opening':play('spring',.25);break;
-   case 'contact':play(e.tool===2?'knifeContact':'impact',.65);break;
-   case 'glance':play('impact',.32);break;
-   case 'finisher':play('knifeContact',.8);play('hit',.55,.045);this.duckUntil=(this.ctx?.currentTime||0)+1;break;
-   case 'cloth':case 'equip':play('cloth',.3);play('click',.15,.06);break;
-   case 'attack':play(e.tool===2?'slash':'pistol',e.tool===2?.65:.58);if(e.tool===1)play('click',.25,.055);break;
-   case 'scenery':play(e.surface==='wood'?'impact':e.surface==='ground'?'ground':'plaster',.38);break;
-   case 'reload':play('reload',.5);play('cloth',.2,.28);break;
-   case 'reloadDone':play('click',.36);break;
-   case 'empty':play('click',.18);break;
-   case 'intercept':play('tentacle',.8);play('click',.3,.04);break;
-   case 'telegraph':play('tension',.9);play('cloth',.5,.35);this.duckUntil=this.ctx?.currentTime+1.8;break;
-   case 'dash':case 'dodge':play('dash',.85);break;
-   case 'arrival':play('arrival',.7);play('tentacle',.3,.05);break;
-   case 'place':play('net',.4);break;
-   case 'retrieve':play('rustle',.4);break;
-   case 'trapArmed':play('spring',.3);break;
-   case 'trapSeen':play('tentacle',.24);break;
-   case 'trapTrigger':play('net',.8);play('spring',.65,.05);this.duckUntil=this.ctx?.currentTime+1;break;
-   case 'trapEscape':play('rustle',.55);play('tentacle',.5,.08);break;
-   case 'command':play('confirm',.24);break;
-   case 'prepare':play(e.who==='karma'?'reload':'rustle',.45);break;
-   case 'ability':play(e.who==='karma'?'pistol':'cloth',.55);play(e.who==='karma'?'pistol':'rustle',.4,.21);break;
-   case 'abilityEnd':play('cloth',.22);break;
-   case 'hit':play('hit',.8);play('spring',.35,.08);this.duckUntil=this.ctx?.currentTime+1;break;
-   case 'tag':play('tag',.8);play('cloth',.6,.04);this.duckUntil=this.ctx?.currentTime+1;break;
-   case 'countdown':play('tick',e.seconds===60?.3:.45);break;
-   case 'finish':(e.won?[60,64,67,72]:[60,59,55]).forEach((n,i)=>this.pluck(n,.5,i*.16,false));break;
+  constructor() { this.ctx = null; this.volume = .8; this.musicOn = true; this.song = null; }
+  unlock() {
+    if (!this.ctx) {
+      const AC = window.AudioContext || window.webkitAudioContext;
+      if (!AC) return;
+      this.ctx = new AC();
+      this.out = this.ctx.createGain(); this.out.connect(this.ctx.destination);
+      this.music = this.ctx.createGain(); this.music.gain.value = .5; this.music.connect(this.out);
+      const len = this.ctx.sampleRate;
+      this.noiseBuf = this.ctx.createBuffer(1, len, this.ctx.sampleRate);
+      const d = this.noiseBuf.getChannelData(0);
+      for (let i = 0; i < len; i++) d[i] = Math.random() * 2 - 1;
+      this.setVolume(this.volume);
+    }
+    if (this.ctx.state === 'suspended') this.ctx.resume();
   }
- }
- pluck(note,gain=.15,delay=0,music=true){if(!this.ctx)return;const c=this.ctx,f=440*2**((note-69)/12),b=c.createBuffer(1,c.sampleRate*1.4,c.sampleRate),a=b.getChannelData(0);for(let i=0;i<a.length;i++){const t=i/c.sampleRate;a[i]=(Math.sin(2*Math.PI*f*t)+.3*Math.sin(2*Math.PI*f*2*t)*Math.exp(-t*12)+.12*Math.sin(2*Math.PI*f*3.01*t)*Math.exp(-t*18))*Math.exp(-t*5)*Math.min(1,t*250)*.5;}const src=c.createBufferSource(),g=c.createGain();src.buffer=b;g.gain.value=gain;src.connect(g);g.connect(music?this.musicGain:this.fx);src.start(c.currentTime+delay);src.onended=()=>{src.disconnect();g.disconnect();};}
- update(dt,s){if(!this.ctx)return;this.clock+=dt;this.ambient+=dt;const pressure=['windup','tag','travel','sweepWindup','sweep'].includes(s?.koro.state),c=this.ctx;this.musicGain.gain.setTargetAtTime(this.music*(c.currentTime<this.duckUntil?.28:1),c.currentTime,.15);
-  if(this.clock>(pressure?.32:(s?.stage===3?.37:.46))){this.clock=0;const patterns=[[64,0,67,71,0,67,62,0,64,0,69,67,0,62,59,0],[64,71,0,67,62,0,69,0,64,0,67,74,0,69,62,0],[64,67,71,0,74,71,0,67,62,0,69,71,67,0,62,59]],notes=patterns[Math.min(2,(s?.stage||1)-1)],n=notes[this.beat++%16];if(n)this.pluck(n,.17);if(this.beat%4===0){const bass=[40,40,43,38][Math.floor(this.beat/4)%4];this.pluck(bass,.16);this.pluck(bass+19,.07,.04);}if(pressure&&this.beat%2===0)this.pluck(76,.045);}
-  if(this.ambient>3.1){this.ambient=0;const outdoor=s?.player.x>11;this.play('leaves',{gain:outdoor?.12:.045,pan:.65,outdoor:true});if(this.beat%3===0)this.play(outdoor?'bird':'creak',{gain:.045,pan:-.6,outdoor});}
- }
+  setVolume(v) { this.volume = v; if (this.out) this.out.gain.value = v * .7; }
+  setMusic(on) { this.musicOn = on; if (this.music) this.music.gain.value = on ? .5 : 0; }
+
+  tone(freq, dur, {type = 'sine', gain = .2, slide = 1, at = 0, attack = .004, dest} = {}) {
+    if (!this.ctx) return;
+    const t = this.ctx.currentTime + at, o = this.ctx.createOscillator(), g = this.ctx.createGain();
+    o.type = type; o.frequency.setValueAtTime(freq, t); o.frequency.exponentialRampToValueAtTime(freq * slide, t + dur);
+    g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(gain, t + attack); g.gain.exponentialRampToValueAtTime(.0001, t + dur);
+    o.connect(g); g.connect(dest || this.out); o.start(t); o.stop(t + dur + .05);
+  }
+  noise(dur, {freq = 1200, q = 1, gain = .2, type = 'bandpass', slide = 1, at = 0, dest} = {}) {
+    if (!this.ctx) return;
+    const t = this.ctx.currentTime + at, s = this.ctx.createBufferSource(), f = this.ctx.createBiquadFilter(), g = this.ctx.createGain();
+    s.buffer = this.noiseBuf; s.loop = true; f.type = type; f.Q.value = q;
+    f.frequency.setValueAtTime(freq, t); f.frequency.exponentialRampToValueAtTime(freq * slide, t + dur);
+    g.gain.setValueAtTime(gain, t); g.gain.exponentialRampToValueAtTime(.0001, t + dur);
+    s.connect(f); f.connect(g); g.connect(dest || this.out); s.start(t, Math.random()); s.stop(t + dur + .05);
+  }
+  bellTone(freq, at, gain = .12) {
+    for (const [m, g, d] of [[1, 1, 2.6], [2.76, .35, 1.2], [5.4, .15, .6]]) this.tone(freq * m, d, {gain: gain * g, at, attack: .002});
+  }
+
+  play(name, n = 1) {
+    if (!this.ctx) return;
+    switch (name) {
+      case 'shot': this.noise(.07, {freq: 2400, q: .8, gain: .35, slide: .4}); this.tone(900, .05, {type: 'square', gain: .05, slide: .5}); break;
+      case 'hit': this.tone(320, .28, {type: 'sine', gain: .45, slide: .35}); this.noise(.22, {freq: 700, q: 2, gain: .3, slide: .5}); this.tone(1400, .1, {type: 'triangle', gain: .12, slide: 2}); break;
+      case 'miss': this.tone(700, .18, {type: 'triangle', gain: .2, slide: .5}); this.tone(520, .25, {type: 'triangle', gain: .16, slide: .5, at: .1}); break;
+      case 'pop': this.tone(1100, .09, {type: 'sine', gain: .12, slide: 2.2}); break;
+      case 'whoosh': this.noise(.24, {freq: 500, q: 1.2, gain: .12 * Math.min(2, n), slide: 6}); break;
+      case 'zip': this.noise(.16, {freq: 2600, q: 1, gain: .12, slide: .3}); break;
+      case 'window': this.tone(1568, .12, {type: 'sine', gain: .07}); break;
+      case 'clap': this.noise(.35, {freq: 1800, q: .6, gain: .7, slide: .5}); this.tone(180, .3, {type: 'sine', gain: .4, slide: .4}); break;
+      case 'slash': this.noise(.4, {freq: 6000, q: 3, gain: .35, slide: .2}); this.tone(2200, .3, {type: 'sawtooth', gain: .05, slide: .3}); break;
+      case 'cutin': this.noise(.3, {freq: 300, q: 1, gain: .18, slide: 8}); this.tone(660, .12, {type: 'square', gain: .05, at: .05}); break;
+      case 'tick': this.tone(2000, .03, {type: 'square', gain: .03}); break;
+      case 'ui': this.tone(880, .06, {type: 'triangle', gain: .08, slide: 1.5}); break;
+      case 'bell': [64, 60, 62, 55, 55, 62, 64, 60].forEach((m, i) => this.bellTone(NOTE(m + 12), i * .55 + (i > 3 ? .4 : 0))); break;
+      case 'stamp': this.tone(140, .2, {type: 'sine', gain: .5, slide: .5}); this.noise(.1, {freq: 400, gain: .3}); break;
+    }
+  }
+
+  // Tiny step sequencer: marimba arpeggio, soft bass, brushed hats.
+  startSong(name) {
+    if (!this.ctx || this.song === name) return;
+    this.stopSong(); this.song = name;
+    const [bpm, root, chords] = SONGS[name], step = 60 / bpm / 2;
+    let n = 0, next = this.ctx.currentTime + .1;
+    this.seq = setInterval(() => {
+      while (next < this.ctx.currentTime + .3) {
+        const bar = Math.floor(n / 8) % 4, beat = n % 8, at = next - this.ctx.currentTime;
+        const chordRoot = root + chords[bar];
+        if (beat % 4 === 0) this.tone(NOTE(chordRoot - 24), step * 3.5, {type: 'triangle', gain: .14, at, dest: this.music});
+        // ponytail: fifths and octaves only, so every chord stays consonant without a key table
+        const arp = [0, 7, 12, 19, 12, 7, 14, 12][beat];
+        this.tone(NOTE(chordRoot + arp), step * 1.6, {type: 'sine', gain: beat % 2 ? .05 : .08, at, dest: this.music});
+        this.tone(NOTE(chordRoot + arp) * 4, .05, {type: 'sine', gain: .012, at, dest: this.music});
+        if (beat % 2 === 1) this.noise(.04, {freq: 8000, type: 'highpass', gain: .025, at, dest: this.music});
+        next += step; n++;
+      }
+    }, 100);
+  }
+  stopSong() { clearInterval(this.seq); this.song = null; }
 }
