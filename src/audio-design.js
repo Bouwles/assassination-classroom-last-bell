@@ -2,6 +2,7 @@
 // Generated once, locally; no downloads, recorded voices or third-party audio.
 export const recipes={
  wood:{d:.23,noise:.27,low:950,body:115,ring:310,decay:23},
+ veranda:{d:.3,noise:.31,low:1600,body:148,ring:460,decay:21,pulses:[0,.027]},
  ground:{d:.24,noise:.7,low:2400,body:65,ring:0,decay:15},
  cloth:{d:.22,noise:.24,low:3700,body:0,ring:0,decay:12},
  pistol:{d:.2,noise:.8,low:7200,body:175,ring:850,decay:39},
@@ -12,6 +13,14 @@ export const recipes={
  slash:{d:.29,noise:.6,low:4100,body:0,ring:0,decay:10,swell:true},
  tentacle:{d:.28,noise:.16,low:1300,body:220,ring:380,decay:16,bend:-180},
  dash:{d:.48,noise:.8,low:2800,body:80,ring:0,decay:7,swell:true,bend:-50},
+ quickstep:{d:.26,noise:.65,low:2200,body:105,ring:0,decay:18,bend:-70},
+ slide:{d:.64,noise:.67,low:1500,body:55,ring:0,decay:5,swell:true},
+ vault:{d:.4,noise:.38,low:2400,body:125,ring:310,decay:20,pulses:[0,.16]},
+ sweepTell:{d:.78,noise:.2,low:1800,body:290,ring:570,decay:9,pulses:[0,.23,.46],bend:180},
+ sweep:{d:.62,noise:.74,low:3800,body:110,ring:0,decay:8,swell:true,bend:-65},
+ feint:{d:.38,noise:.27,low:3200,body:370,ring:690,decay:28,pulses:[0,.12],bend:-180},
+ stage:{d:1.15,noise:.18,low:1800,body:180,ring:720,decay:10,pulses:[0,.12,.38],bend:190},
+ knifeContact:{d:.25,noise:.47,low:2900,body:205,ring:1250,decay:25,pulses:[0,.025]},
  arrival:{d:.36,noise:.45,low:1400,body:70,ring:190,decay:17},
  tension:{d:.8,noise:.12,low:900,body:190,ring:290,decay:5,bend:120,swell:true},
  net:{d:.46,noise:.56,low:3200,body:300,ring:620,decay:19,pulses:[0,.09,.19]},
