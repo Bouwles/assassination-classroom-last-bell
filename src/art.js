@@ -1,8 +1,17 @@
 import * as THREE from 'three';
 export function painted(w,h,draw){const c=document.createElement('canvas');c.width=w;c.height=h;draw(c.getContext('2d'),w,h);const t=new THREE.CanvasTexture(c);t.colorSpace=THREE.SRGBColorSpace;t.anisotropy=4;return t;}
-export function woodTexture(){return painted(512,512,(c,w,h)=>{c.fillStyle='#b98550';c.fillRect(0,0,w,h);for(let j=0;j<8;j++){c.fillStyle=['#b88753','#c3925d','#c99a65','#b0804c'][j%4];c.fillRect(0,j*64,512,63);c.fillStyle='#845b37';c.fillRect(0,j*64,512,2);const seam=(j%3)*160+64;c.fillRect(seam,j*64,2,64);c.strokeStyle='#aa7846';c.lineWidth=1;for(let i=0;i<3;i++){c.beginPath();c.moveTo(0,j*64+12+i*16);c.bezierCurveTo(150,j*64+7+i*16,300,j*64+20+i*16,512,j*64+11+i*16);c.stroke();}}});}
+export function woodTexture(){return painted(512,512,(c,w,h)=>{
+ c.fillStyle='#c29560';c.fillRect(0,0,w,h);
+ for(let j=0;j<8;j++){
+  const y=j*64;c.fillStyle=['#c59b68','#cba373','#bd915c','#c9a170'][j%4];c.fillRect(0,y,w,64);
+  const shade=c.createLinearGradient(0,y,0,y+64);shade.addColorStop(0,'#4d36151c');shade.addColorStop(.12,'#ffffff0a');shade.addColorStop(.9,'#ffffff00');shade.addColorStop(1,'#3f2a151a');c.fillStyle=shade;c.fillRect(0,y,w,64);
+  c.fillStyle='#72512e75';c.fillRect(0,y,512,1);const seam=(j%3)*160+64;c.fillRect(seam,y,1,64);
+  for(let i=0;i<18;i++){c.strokeStyle=i%3?'#77543118':'#fbe3b729';c.lineWidth=.5;c.beginPath();const yy=y+3+i*3.3;c.moveTo(0,yy);c.bezierCurveTo(150,yy+Math.sin(i+j)*3,300,yy-Math.cos(i)*3,512,yy+1);c.stroke();}
+  for(const x of [seam+6,seam-6]){c.fillStyle='#654b3455';c.fillRect(x,y+7,1,2);c.fillRect(x,y+55,1,2);}
+ }
+ });}
 export function boardTexture(){return painted(1536,640,(c,w,h)=>{
- c.fillStyle='#214b43';c.fillRect(0,0,w,h);c.fillStyle='#f3efcc';c.font='32px Georgia';c.fillText('Class 3-E',65,66);c.font='25px sans-serif';c.fillText('Assassination training',1080,65);c.strokeStyle='#83a699';c.lineWidth=2;c.beginPath();c.moveTo(60,90);c.lineTo(1470,90);c.stroke();
+ c.fillStyle='#214b43';c.fillRect(0,0,w,h);for(let i=0;i<140;i++){c.fillStyle=i%2?'#ffffff03':'#020f0c05';c.fillRect((i*139)%w,(i*71)%h,80+i%70,12);}c.fillStyle='#f3efcc';c.font='32px Georgia';c.fillText('Class 3-E',65,66);c.font='25px sans-serif';c.fillText('Assassination training',1080,65);c.strokeStyle='#83a699';c.lineWidth=2;c.beginPath();c.moveTo(60,90);c.lineTo(1470,90);c.stroke();
  c.font='70px Georgia';c.fillText('A good plan beats a fast trigger.',66,195);c.font='34px sans-serif';
  ['Observe his attention.','Create an opening together.','Follow through. Then learn.'].forEach((s,i)=>{c.fillStyle='#f2df92';c.fillText(`${i+1}.`,85,290+i*86);c.fillStyle='#e8edda';c.fillText(s,140,290+i*86);});
  c.strokeStyle='#f6dd67';c.lineWidth=5;c.beginPath();c.arc(1240,365,112,0,Math.PI*2);c.stroke();c.fillStyle='#f6dd67';c.beginPath();c.arc(1205,340,5,0,7);c.arc(1275,340,5,0,7);c.fill();c.beginPath();c.arc(1240,364,72,.15,Math.PI-.15);c.stroke();c.font='24px Georgia';c.fillText('You have potential.',1120,530);

@@ -1,11 +1,12 @@
 import * as THREE from 'three';
+import {RoundedBoxGeometry} from 'three/addons/geometries/RoundedBoxGeometry.js';
 import {faceTexture} from './art.js';
 const grad=new THREE.DataTexture(new Uint8Array([130,195,255]),3,1,THREE.RedFormat);grad.needsUpdate=true;grad.minFilter=grad.magFilter=THREE.NearestFilter;
 export const toon=(color)=>new THREE.MeshToonMaterial({color,gradientMap:grad});
 const outline=new THREE.MeshBasicMaterial({color:0x282d32,side:THREE.BackSide});
 const colors={yellow:toon('#ffe146'),robe:toon('#24252a'),red:toon('#a6363e'),purple:toon('#65519b'),gold:toon('#f2b75d'),white:toon('#fffbea'),skin:toon('#f7cfb4'),grey:toon('#9293a4'),dark:toon('#354044'),shirt:toon('#f8f5e9'),black:toon('#292b32')};
-colors.yellow.emissive.set('#eecb27');colors.yellow.emissiveIntensity=.23;
-export function mesh(parent,geo,mat,pos=[0,0,0],scale=null,outlined=false){const m=new THREE.Mesh(geo,mat);m.position.set(...pos);if(scale)m.scale.set(...scale);m.castShadow=true;m.receiveShadow=true;parent.add(m);if(outlined){const edge=new THREE.Mesh(geo,outline);edge.scale.setScalar(1.025);m.add(edge);}return m;}
+colors.yellow.emissive.set('#d9a816');colors.yellow.emissiveIntensity=.12;colors.yellow.toneMapped=false;
+export function mesh(parent,geo,mat,pos=[0,0,0],scale=null,outlined=false){const m=new THREE.Mesh(geo,mat);m.position.set(...pos);if(scale)m.scale.set(...scale);m.castShadow=!mat.transparent;m.receiveShadow=!mat.transparent&&mat!==colors.yellow;parent.add(m);if(outlined){const edge=new THREE.Mesh(geo,outline);edge.scale.setScalar(1.025);m.add(edge);}return m;}
 const sphere=new THREE.SphereGeometry(1,24,16),box=new THREE.BoxGeometry(1,1,1);
 const ball=(p,mat,pos,scale,out=true)=>mesh(p,sphere,mat,pos,scale,out);
 function face(parent,kind,w,h,z,y){
@@ -46,21 +47,25 @@ export class KoroModel {
   this.tips=Array.from({length:10},(_,i)=>ball(p,colors.yellow,[0,0,0],i<4?[.065,.065,.065]:[.095,.095,.095],false));
   this.fingers=Array.from({length:4},()=>curvedMesh(p,colors.yellow,.06));
   this.chalk=mesh(p,new THREE.CylinderGeometry(.025,.025,.22,8),colors.white,[1.4,2,0]);
+  this.paper=mesh(p,new THREE.BoxGeometry(.3,.38,.012),colors.white,[-1,1.25,.4]);this.paper.rotation.z=.12;
+  for(let i=0;i<4;i++)mesh(this.paper,new THREE.BoxGeometry(.18,.008,.004),i===0?colors.red:colors.grey,[0,.11-i*.055,.008]);
   this.sweat=ball(p,toon('#b5e9f6'),[.62,2.75,.38],[.06,.13,.045],false);this.sweat.visible=false;
   this.update({x:0,z:0,yaw:0,state:'teach'},0);
  }
  update(k,time){
-  this.root.position.set(k.x,0,k.z);let diff=Math.atan2(Math.sin(k.yaw-this.root.rotation.y),Math.cos(k.yaw-this.root.rotation.y));this.root.rotation.y+=diff*.23;
+  const sweep=['sweepWindup','sweep'].includes(k.state);this.root.position.set(k.x,0,k.z);const facing=sweep?(k.sweepYaw??k.yaw):k.yaw;let diff=Math.atan2(Math.sin(facing-this.root.rotation.y),Math.cos(facing-this.root.rotation.y));this.root.rotation.y+=diff*(sweep?.5:.23);
   this.head.rotation.y=Math.atan2(Math.sin((k.headYaw??k.yaw)-this.root.rotation.y),Math.cos((k.headYaw??k.yaw)-this.root.rotation.y))*.55;
-  const excited=['windup','tag','trapped','recover'].includes(k.state),moving=['tag','travel','dodge'].includes(k.state);this.body.position.y=Math.sin(time*2.3)*.035;this.body.rotation.z=k.state==='dodge'?Math.sin(time*30)*.12:Math.sin(time*1.8)*.018;
+  const excited=['windup','tag','trapped','recover','sweepWindup','sweep'].includes(k.state),moving=['tag','travel','dodge','reposition'].includes(k.state);this.body.position.y=Math.sin(time*2.3)*.035;this.body.rotation.z=k.state==='dodge'?Math.sin(time*30)*.12:k.state==='feint'?-.12:sweep?-.08:Math.sin(time*1.8)*.018;this.body.rotation.x=k.state==='tag'?.12:k.state==='reposition'?.18:k.state==='counter'?-.05:0;
   this.head.material=k.state==='recover'?toonCached('#ff9a94'):colors.yellow;this.sweat.visible=k.state==='trapped';
   for(let i=0;i<4;i++){const s=i%2===0?-1:1,upper=i<2,wave=Math.sin(time*(excited?7:2.3)+i)*.14,y=upper?1.75:1.1;
    const end=[s*(upper?1.38:.92),y+(upper?.9:.3)+wave,k.intercept>0&&i===1?1.5:k.state==='tag'?1.1:.3];
+   if(sweep&&i===0){const angle=-1.35+(k.state==='sweep'?(k.sweepProgress??0)*2.7:0),r=k.state==='sweep'?3.65:1.65;end[0]=Math.sin(angle)*r;end[1]=1.2;end[2]=Math.cos(angle)*r;}
+   if(k.state==='windup'&&upper){end[0]*=.75;end[1]=1.8;end[2]=1.35;}
    bend(this.arms[i],[[s*.55,y,0],[s*1.15,y-.15,.08],[s*(upper?1.62:1.3),y+(upper?.4:-.15)+wave,.2],end]);this.tips[i].position.set(...end);
    if(upper)for(let j=0;j<2;j++)bend(this.fingers[i*2+j],[end,[end[0]+s*(j*.12),end[1]+.14,end[2]],[end[0]+s*(.12+j*.13),end[1]+.26,end[2]],[end[0]+s*(.18+j*.13),end[1]+.23,end[2]+.02]]);
   }
   for(let i=0;i<6;i++){const a=(i/6)*Math.PI*2,s=Math.sin(time*(moving?11:2)+i)*.1,end=[Math.sin(a)*1.04,.18+s,Math.cos(a)*1.04];bend(this.feet[i],[[Math.sin(a)*.35,.6,Math.cos(a)*.35],[Math.sin(a)*.65,.2+s,Math.cos(a)*.65],[Math.sin(a)*.95,.13,Math.cos(a)*.95],end]);this.tips[i+4].position.set(...end);}
-  this.chalk.visible=k.state==='teach';this.chalk.position.copy(this.tips[1].position);this.chalk.position.y+=.18;
+  this.chalk.visible=k.state==='teach';this.chalk.position.copy(this.tips[1].position);this.chalk.position.y+=.18;this.paper.visible=['teach','intercept'].includes(k.state)||k.intercept>0;this.paper.position.copy(this.tips[2].position);this.paper.position.y+=.1;
  }
 }
 const matCache={};function toonCached(c){return matCache[c]??=toon(c);}
@@ -70,7 +75,9 @@ function spike(parent,mat,x,y,z,tx,ty,tz,width=.13){
 export {StudentModel} from './students.js';
 export function createViewmodel(){const root=new THREE.Group();const hand=toon('#f3c8ac'),blue=toon('#354a65'),grey=toon('#454e52'),mint=toon('#79d899');
  for(const s of [-1,1]){const arm=mesh(root,new THREE.CylinderGeometry(.055,.072,.48,12),colors.white,[s*.19,-.25,-.42]);arm.rotation.x=-.9;ball(root,hand,[s*.12,-.15,-.61],[.058,.036,.085]);for(let i=0;i<4;i++){const finger=mesh(root,new THREE.CapsuleGeometry(.012,.07,3,6),hand,[s*.12+(i-1.5)*.022,-.15,-.67]);finger.rotation.x=Math.PI/2;}}
- const gun=new THREE.Group();root.add(gun);mesh(gun,box,grey,[.1,-.1,-.72],[.105,.115,.32],true);mesh(gun,box,blue,[.1,-.19,-.61],[.085,.19,.1]);mesh(gun,box,mint,[.1,-.035,-.78],[.035,.025,.07]);mesh(gun,new THREE.CylinderGeometry(.025,.025,.03,12),grey,[.1,-.1,-.89]).rotation.x=Math.PI/2;
+ const gun=new THREE.Group();root.add(gun);const slide=mesh(gun,new RoundedBoxGeometry(.105,.085,.32,2,.008),grey,[.1,-.08,-.72],null,true);gun.userData.slide=slide;mesh(gun,new RoundedBoxGeometry(.087,.19,.1,2,.008),blue,[.1,-.19,-.61]);mesh(gun,box,mint,[.1,-.035,-.78],[.035,.025,.07]);mesh(gun,new THREE.CylinderGeometry(.025,.025,.03,12),colors.black,[.1,-.08,-.89]).rotation.x=Math.PI/2;
+ mesh(gun,box,colors.black,[.1,-.129,-.73],[.09,.008,.27]);mesh(gun,box,grey,[.1,-.29,-.61],[.09,.015,.105]);
+ const muzzle=new THREE.Group();muzzle.position.set(.1,-.08,-.915);gun.add(muzzle);for(let i=0;i<2;i++){const star=mesh(muzzle,new THREE.PlaneGeometry(.12,.055),new THREE.MeshBasicMaterial({color:i?'#e8fff1':'#a8ffd5',transparent:true,opacity:.85,depthWrite:false}));star.rotation.z=i*Math.PI/2;}muzzle.visible=false;gun.userData.muzzle=muzzle;
  // Fixed sights, trigger guard, grip seams and slide separation make handling readable.
  mesh(gun,box,colors.black,[.1,-.047,-.61],[.073,.012,.03]);mesh(gun,box,colors.black,[.1,-.043,-.86],[.015,.019,.022]);
  const guard=mesh(gun,new THREE.TorusGeometry(.048,.008,6,16,Math.PI*1.65),grey,[.1,-.183,-.72]);guard.rotation.y=Math.PI/2;
@@ -78,4 +85,4 @@ export function createViewmodel(){const root=new THREE.Group();const hand=toon('
  for(let i=0;i<3;i++)mesh(gun,box,colors.black,[.144,-.15-i*.035,-.61],[.007,.012,.083]);
  const knife=new THREE.Group();root.add(knife);mesh(knife,box,grey,[.12,-.12,-.67],[.055,.055,.22]);const blade=mesh(knife,new THREE.ConeGeometry(.065,.43,3),mint,[.12,-.08,-.96]);blade.rotation.x=-Math.PI/2;blade.scale.z=.2;
  const net=new THREE.Group();root.add(net);mesh(net,new THREE.CylinderGeometry(.13,.13,.035,24),mint,[.08,-.1,-.7]);
- return {root,gun,knife,net};}
+ return {root,gun,knife,net,slide,muzzle};}
